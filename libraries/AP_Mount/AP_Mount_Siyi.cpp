@@ -82,6 +82,12 @@ void AP_Mount_Siyi::update()
         _last_rangefinder_req_ms = now_ms;
     }
 
+    // send attitude to gimbal at 10Hz
+    if (now_ms - _last_attitude_send_ms > 100) {
+        _last_attitude_send_ms = now_ms;
+        send_attitude_velocity();
+    }
+    
     // run zoom control
     update_zoom_control();
 
@@ -1085,6 +1091,49 @@ void AP_Mount_Siyi::check_firmware_version() const
             minimum_ver.camera.major, minimum_ver.camera.minor, minimum_ver.camera.patch
         );
     }
+}
+
+/*
+ send ArduPilot attitude and velocity to gimbal
+*/
+void AP_Mount_Siyi::send_attitude_velocity(void)
+{
+    const auto &ahrs = AP::ahrs();
+    struct {
+        uint32_t time_boot_ms;
+        float roll, pitch, yaw;
+        float rollspeed, pitchspeed, yawspeed;
+    } attitude;
+
+    // get attitude as euler 321
+    const auto &gyro = ahrs.get_gyro();
+    const uint32_t now_ms = AP_HAL::millis();
+
+    attitude.time_boot_ms = now_ms;
+    attitude.roll = ahrs.roll;
+    attitude.pitch = ahrs.pitch;
+    attitude.yaw = ahrs.yaw;
+    attitude.rollspeed = gyro.x;
+    attitude.pitchspeed = gyro.y;
+    attitude.yawspeed = gyro.z;
+
+    send_packet(SiyiCommandId::EXTERNAL_ATTITUDE, (const uint8_t *)&attitude, sizeof(attitude));
+
+    // send velocity NED
+    struct {
+        uint32_t time_boot_ms;
+        float vn, ve, vd;
+    } velocity;
+    Vector3f vel_ned;
+    if (!ahrs.get_velocity_NED(vel_ned)) {
+        return;
+    }
+    velocity.time_boot_ms = now_ms;
+    velocity.vn = vel_ned.x;
+    velocity.ve = vel_ned.y;
+    velocity.vd = vel_ned.z;
+
+    send_packet(SiyiCommandId::EXTERNAL_VELOCITY, (const uint8_t *)&velocity, sizeof(velocity));
 }
 
 #endif // HAL_MOUNT_SIYI_ENABLED
