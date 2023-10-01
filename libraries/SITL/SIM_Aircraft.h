@@ -36,6 +36,7 @@
 #include "SIM_Battery.h"
 #include <Filter/Filter.h>
 #include "SIM_JSON_Master.h"
+#include "ServoModel.h"
 
 #ifndef USE_PICOJSON
 #define USE_PICOJSON (CONFIG_HAL_BOARD == HAL_BOARD_SITL || CONFIG_HAL_BOARD == HAL_BOARD_LINUX)
@@ -234,6 +235,8 @@ protected:
     bool use_time_sync = true;
     float last_speedup = -1.0f;
     const char *config_ = "";
+    float eas2tas = 1.0;
+    float air_density = SSL_AIR_DENSITY;
 
     // allow for AHRS_ORIENTATION
     AP_Int8 *ahrs_orientation;
@@ -290,9 +293,9 @@ protected:
     void update_wind(const struct sitl_input &input);
 
     // return filtered servo input as -1 to 1 range
-    float filtered_idx(float v, uint8_t idx);
     float filtered_servo_angle(const struct sitl_input &input, uint8_t idx);
     float filtered_servo_range(const struct sitl_input &input, uint8_t idx);
+    void filtered_servo_setup(uint8_t idx, uint16_t pwm_min, uint16_t pwm_max, float deflection_deg);
 
     // extrapolate sensors by a given delta time in seconds
     void extrapolate_sensors(float delta_time);
@@ -326,7 +329,7 @@ private:
         Location location;
     } smoothing;
 
-    LowPassFilterFloat servo_filter[5];
+    ServoModel servo_filter[16];
 
     Buzzer *buzzer;
     Sprayer *sprayer;

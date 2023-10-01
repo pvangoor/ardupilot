@@ -84,6 +84,9 @@ const AP_Param::GroupInfo SIM::var_info[] = {
     // @Units: m/s
     // @User: Advanced
     AP_GROUPINFO("WIND_TURB",     11, SIM,  wind_turbulance,  0),
+
+    AP_GROUPINFO("SERVO_DELAY",   14, SIM,  servo_delay, 0.01),
+    AP_GROUPINFO("SERVO_FILTER",  15, SIM,  servo_filter, 50),
     AP_GROUPINFO("SERVO_SPEED",   16, SIM,  servo_speed,  0.14),
     AP_GROUPINFO("SONAR_ROT",     17, SIM,  sonar_rot, Rotation::ROTATION_PITCH_270),
     // @Param: BATT_VOLTAGE
@@ -437,6 +440,14 @@ const AP_Param::GroupInfo SIM::var_info3[] = {
     AP_SUBGROUPINFO(airspeed[1], "ARSPD2_", 51, SIM, SIM::AirspeedParm),
 #endif
 
+    // a method to force alt change for testing
+    AP_GROUPINFO("SET_ALT", 52, SIM, setalt, 0),
+    AP_GROUPINFO("SET_PITCH", 53, SIM, setpitch, 0),
+    AP_GROUPINFO("SET_SPEED", 54, SIM, setspeed, 0),
+
+    AP_GROUPINFO("BLN_BURST", 55, SIM, balloon_burst_amsl, 30000),
+    AP_GROUPINFO("BLN_RATE",  56, SIM, balloon_rate, 5.5),
+    
 
 #ifdef SFML_JOYSTICK
     AP_SUBGROUPEXTENSION("",      63, SIM,  var_sfml_joystick),
