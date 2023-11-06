@@ -129,8 +129,11 @@ HarmonicNotchFilter<T>::~HarmonicNotchFilter() {
   the constraints are used to determine attenuation (A) and quality (Q) factors for the filter
  */
 template <class T>
-void HarmonicNotchFilter<T>::init(float sample_freq_hz, const HarmonicNotchFilterParams &params)
+void HarmonicNotchFilter<T>::init(float sample_freq_hz, HarmonicNotchFilterParams &_params)
 {
+    // keep a copy of the params object
+    params = &_params;
+
     // sanity check the input
     if (_filters == nullptr || is_zero(sample_freq_hz) || isnan(sample_freq_hz)) {
         return;
@@ -138,15 +141,15 @@ void HarmonicNotchFilter<T>::init(float sample_freq_hz, const HarmonicNotchFilte
 
     _sample_freq_hz = sample_freq_hz;
 
-    const float bandwidth_hz = params.bandwidth_hz();
-    const float attenuation_dB = params.attenuation_dB();
-    float center_freq_hz = params.center_freq_hz();
+    const float bandwidth_hz = params->bandwidth_hz();
+    const float attenuation_dB = params->attenuation_dB();
+    float center_freq_hz = params->center_freq_hz();
 
     const float nyquist_limit = sample_freq_hz * 0.48f;
     const float bandwidth_limit = bandwidth_hz * 0.52f;
 
     // remember the lowest frequency we will have a notch enabled at
-    _minimum_freq = center_freq_hz * params.freq_min_ratio();
+    _minimum_freq = center_freq_hz * params->freq_min_ratio();
 
     /*
       adjust the fundamental center frequency we use for the initial
@@ -160,8 +163,6 @@ void HarmonicNotchFilter<T>::init(float sample_freq_hz, const HarmonicNotchFilte
     // position the individual notches so that the attenuation is no worse than a single notch
     // calculate attenuation and quality from the shaping constraints
     NotchFilter<T>::calculate_A_and_Q(center_freq_hz, bandwidth_hz / _composite_notches, attenuation_dB, _A, _Q);
-
-    _treat_low_freq_as_min = params.hasOption(HarmonicNotchFilterParams::Options::TreatLowAsMin);
 
     _initialised = true;
 }
@@ -240,44 +241,43 @@ void HarmonicNotchFilter<T>::set_center_frequency(uint16_t idx, float notch_cent
         return;
     }
 
-    // the minimum frequency for a harmonic is the base minimum frequency
-    // scaled for the harmonic multiplier
-    const float harmonic_min_freq = _minimum_freq * harmonic_mul;
+    // the minimum frequency for a harmonic is the base minimum
+    // frequency scaled for the harmonic multiplier, the spread
+    // multiplier and the FM_RAT set by the user
+    const float harmonic_min_freq = _minimum_freq * harmonic_mul * spread_mul;
 
-    // on some vehicles we can adjust the attenuation at low frequencies
+    // we can adjust the attenuation at low frequencies
     float A = _A;
 
     // on some vehicles we want to treat zero or very low frequency as
     // the minimum frequency, on others we want to disable the
-    // notch. That is controlled by the _treat_low_freq_as_min flag
-    if (!_treat_low_freq_as_min) {
+    // notch.
+    const bool treat_low_freq_as_min = params->hasOption(HarmonicNotchFilterParams::Options::TreatLowAsMin);
+
+    if (treat_low_freq_as_min) {
+        notch_center = MAX(notch_center, harmonic_min_freq);
+    } else {
         /*
           disable if the notch is less than half of the min frequency
         */
         const float disable_threshold = 0.5;
-        if (notch_center < disable_threshold * _minimum_freq) {
+        if (notch_center < disable_threshold * harmonic_min_freq) {
             notch.disable();
             return;
         }
 
-        if (notch_center < _minimum_freq) {
+        if (notch_center < harmonic_min_freq) {
             /*
               scale the attenuation so that we fade out the notch as
-              we get further below the min frequency
-
-              TODO: determine if this linear scaling is the right
-              function. Very likely we will need something more complex
+              we get further below the min frequency. The attenuation
+              factor A goes to 1.0 (which means no attenuation)
+              See https://github.com/ArduPilot/ardupilot/issues/25461
              */
-            A = linear_interpolate(1.0, _A,
-                                   notch_center,
-                                   disable_threshold * _minimum_freq,
-                                   _minimum_freq);
+            const float bandwidth_ref_Hz = MIN(notch_center * 0.5, params->bandwidth_hz());
+            const float ref = constrain_float((harmonic_min_freq - notch_center) / bandwidth_ref_Hz, 0.0, 1.0);
+            A = sqrtf(sq(A) * (1.0 - ref) + ref);
         }
     }
-
-    // never run the center of a notch at a lower frequency than the
-    // minimum specified in the parameters.
-    notch_center = MAX(notch_center, harmonic_min_freq) * spread_mul;
 
     notch.init_with_A_and_Q(_sample_freq_hz, notch_center, A, _Q);
 }
