@@ -1,3 +1,33 @@
+/*
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+// Developed by Mr Patrick Wiltshire and Dr Pieter Van Goor
+//
+// Implementation of useful matrix Lie groups for inertial state estimation.
+//
+// Matrix Lie groups are sets of matrices that are closed under matrix multiplication and inversion.
+// For a comprehensive overview of the theory of Lie groups, please see
+// [Hall, Brian C., "Lie groups, Lie algebras, and representations." Springer New York, 2013].
+// For some examples of applications of Lie groups in robotics, please see
+// [Sola, Joan, et al. "A micro Lie theory for state estimation in robotics." arXiv preprint arXiv:1812.01537 (2018).]
+//
+// The Lie groups implemented here include:
+// GL(2): The set of 2x2 invertible matrices
+// Gal(3): The symmetry of Galilean spacetime
+// SIM_2(3): The automorphism group of SE_2(3), see: [van Goor, Pieter, et al. "Constructive Equivariant Observer Design for Inertial Navigation." IFAC-PapersOnLine 56.2 (2023): 2494-2499].
+
 #pragma once
 
 #include "AP_Math.h"
